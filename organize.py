@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import os
 import shutil
-from mutagen.easyid3 import EasyID3
+from mutagen.oggopus import OggOpus
 
 
-def organize_mp3s(base_dir):
+def organize_audio_files(base_dir):
     # Make sure the base directory exists
     if not os.path.isdir(base_dir):
         print(f"Error: {base_dir} is not a directory.")
@@ -13,18 +13,22 @@ def organize_mp3s(base_dir):
     single_artist_songs = []
     multi_artist_songs = []
 
-    # Walk through the directory and find MP3 files
+    # Walk through the directory and find Opus files
     for root, _, files in os.walk(base_dir):
         for file in files:
-            if not file.lower().endswith(".mp3"):
+            if not file.lower().endswith(".opus"):
                 continue
 
             file_path = os.path.join(root, file)
             try:
-                tags = EasyID3(file_path)
+                audio = OggOpus(file_path)
+
+                tags = audio.tags or {}
+
                 artist = tags.get("artist", ["Unknown Artist"])[0]
                 album = tags.get("album", ["Unknown Album"])[0]
                 title = tags.get("title", [os.path.splitext(file)[0]])[0]
+
                 item = (artist, album, title, file_path)
                 if "," in artist:
                     multi_artist_songs.append(item)
@@ -41,7 +45,7 @@ def organize_mp3s(base_dir):
         os.makedirs(album_dir, exist_ok=True)
 
         # Move file
-        new_file_path = os.path.join(album_dir, sanitize_filename(f"{title}.mp3"))
+        new_file_path = os.path.join(album_dir, sanitize_filename(f"{title}.opus"))
         if os.path.abspath(file_path) == os.path.abspath(new_file_path):
             continue  # Already in place
 
@@ -65,7 +69,7 @@ def organize_mp3s(base_dir):
             artist_dir = os.path.join(base_dir, sanitize_filename(artist))
 
         album_dir = os.path.join(artist_dir, sanitize_filename(album))
-        new_file_path = os.path.join(album_dir, sanitize_filename(f"{title}.mp3"))
+        new_file_path = os.path.join(album_dir, sanitize_filename(f"{title}.opus"))
         os.makedirs(album_dir, exist_ok=True)
 
         # Move file
@@ -88,8 +92,8 @@ def sanitize_filename(name):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Organize MP3 files by artist and album.")
-    parser.add_argument("directory", help="Path to the directory containing MP3 files")
+    parser = argparse.ArgumentParser(description="Organize Opus files by artist and album.")
+    parser.add_argument("directory", help="Path to the directory containing Opus files")
     args = parser.parse_args()
 
-    organize_mp3s(args.directory)
+    organize_audio_files(args.directory)
