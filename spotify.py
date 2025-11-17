@@ -6,7 +6,7 @@ import json
 
 
 class Spotify:
-    def __init__(self, client_id, client_secret, redirect_uri, history_dir):
+    def __init__(self, client_id, client_secret, redirect_uri):
         self.sp_client = spotipy.Spotify(
             auth_manager=SpotifyOAuth(
                 client_id=client_id,
@@ -15,14 +15,12 @@ class Spotify:
                 scope="user-library-read"
             )
         )
-        self.history_dir = history_dir
 
-
-    def extract_track_ids_from_history(self):
+    def extract_track_ids_from_history(self, history_dir):
         items = []
 
-        for file in os.listdir(self.history_dir):
-            items += json.load(open(self.history_dir + "/" + file))
+        for file in os.listdir(history_dir):
+            items += json.load(open(history_dir + "/" + file))
 
         track_ids = []
 
@@ -33,6 +31,45 @@ class Spotify:
             track_id = track_uri.split(":")[2]
             track_ids.append(track_id)
         return list(set(track_ids))
+
+    def get_user_playlist_track_ids(self):
+        playlists = self.get_user_playlists()
+        track_ids = []
+        for tracks in playlists.values():
+            track_ids += tracks
+        return track_ids
+
+    def get_user_playlists(self):
+        next_playlist_page = 0
+        page_size = 25
+        playlists = []
+        print("Fetching playlists...")
+        while True:
+            playlists_response = self.sp_client.current_user_playlists(page_size, next_playlist_page * page_size)
+            playlists += playlists_response["items"]
+            if not playlists_response["next"]:
+                break
+            next_playlist_page += 1
+        print("Fetched {} playlists".format(len(playlists)))
+        playlist_tracks = {}
+        playlist_ids = [playlist['id'] for playlist in playlists]
+        print("Fetching playlist tracks...")
+        for playlist_id in playlist_ids:
+            next_playlist_tracks_page = 0
+            tracks = []
+            while True:
+                playlist_items_response = self.sp_client.playlist_tracks(
+                    playlist_id=playlist_id,
+                    limit=page_size,
+                    offset=next_playlist_tracks_page * page_size
+                )
+                tracks += [item["track"]["name"] for item in playlist_items_response["items"]]
+                if not playlist_items_response["next"]:
+                    break
+                next_playlist_tracks_page += 1
+            playlist_tracks[playlist_id] = tracks
+        print("Fetched {} playlist tracks".format(len(playlist_tracks)))
+        return playlist_tracks
 
     def get_spotify_data(self, track_ids):
         print(f"Getting data for {len(track_ids)} tracks")
