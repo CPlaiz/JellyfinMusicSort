@@ -32,20 +32,9 @@ class Spotify:
             track_ids.append(track_id)
         return list(set(track_ids))
 
-    def get_user_playlist_track_ids(self):
-        playlists = self.get_user_playlists()
-        track_ids = []
-        for tracks in playlists.values():
-            track_ids += tracks
-        return track_ids
-
     def get_user_playlists_tracks(self):
         playlists = self.get_user_playlists()
-        tracks_deduplicated = {}
-        for tracks in playlists.values():
-            for track in tracks:
-                tracks_deduplicated[track["id"]] = track
-        return list(tracks_deduplicated.values())
+        return get_tracks_from_user_playlists(playlists)
 
     def get_user_playlists(self):
         next_playlist_page = 0
@@ -60,9 +49,10 @@ class Spotify:
             next_playlist_page += 1
         print("Fetched {} playlists".format(len(playlists)))
         playlist_tracks = {}
-        playlist_ids = [playlist['id'] for playlist in playlists]
         print("Fetching playlist tracks...")
-        for playlist_id in playlist_ids:
+        for playlist in playlists:
+            playlist_id = playlist["id"]
+            playlist_name = playlist["name"]
             next_playlist_tracks_page = 0
             tracks = []
             while True:
@@ -71,11 +61,11 @@ class Spotify:
                     limit=page_size,
                     offset=next_playlist_tracks_page * page_size
                 )
-                tracks += [item["track"]["id"] for item in playlist_items_response["items"]]
+                tracks += [item["track"] for item in playlist_items_response["items"]]
                 if not playlist_items_response["next"]:
                     break
                 next_playlist_tracks_page += 1
-            playlist_tracks[playlist_id] = tracks
+            playlist_tracks[playlist_id] = (playlist_name, tracks)
         print("Fetched {} playlist tracks".format(len(playlist_tracks)))
         return playlist_tracks
 
@@ -95,3 +85,10 @@ class Spotify:
             time.sleep(3)
 
         return spotify_data
+
+def get_tracks_from_user_playlists(playlists):
+    tracks_deduplicated = {}
+    for (_, tracks) in playlists.values():
+        for track in tracks:
+            tracks_deduplicated[track["id"]] = track
+    return list(tracks_deduplicated.values())

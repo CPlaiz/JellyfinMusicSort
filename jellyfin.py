@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -41,7 +42,8 @@ class Jellyfin:
     def wait_for_authorization(self, secret):
         print("⏳ Waiting for Quick Connect authorization...")
         while True:
-            r = self.session.get(f"{self.base_url}/QuickConnect/Connect", headers=self.headers, params={"secret": secret})
+            r = self.session.get(f"{self.base_url}/QuickConnect/Connect", headers=self.headers,
+                                 params={"secret": secret})
             if r.status_code == 200:
                 data = r.json()
                 if data.get("Authenticated"):
@@ -53,8 +55,8 @@ class Jellyfin:
                 r.raise_for_status()
             time.sleep(3)
 
-    def get_all_tracks(self, access_token):
-        headers = {"X-MediaBrowser-Token": access_token}
+    def get_all_tracks(self):
+        headers = {"X-MediaBrowser-Token": self.token}
         items = []
         start_index = 0
         limit = 100
@@ -99,8 +101,27 @@ class Jellyfin:
         self.wait_for_authorization(secret)
         return self.authenticate(secret)
 
+    def load_or_request_token(self):
+        if not self.token:
+            self.token = self.request_token()
+            self.save_token_to_file(self.token)
+        else:
+            self.token = self.get_token_from_file()
+
     def get_jellyfin_data(self):
         print("Fetching tracks...")
-        tracks = self.get_all_tracks(self.token)
+        tracks = self.get_all_tracks()
         print(f"Found {len(tracks)} tracks.\n")
         return tracks
+
+    def create_playlist(self, name, tracks_ids):
+        headers = {"X-MediaBrowser-Token": self.token, "Content-Type": "application/json"}
+        print("Creating playlist...")
+        params = {
+            "Name": name,
+            "Ids": tracks_ids,
+            "UserId": "383c6f6beb084de7bc1a66193bc13d93",
+            "IsPublic": True,
+        }
+        r = self.session.post(f"{self.base_url}/Playlists", headers=headers, json=params)
+        print(f"Created playlist '{name}' ({r.json()['Id']})")

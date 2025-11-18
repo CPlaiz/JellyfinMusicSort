@@ -59,6 +59,8 @@ spotify_redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
 jellyfin = Jellyfin(jellyfin_base_url, token_file)
 spotify = Spotify(spotify_client_id, spotify_client_secret, spotify_redirect_uri)
 
+jellyfin.load_or_request_token()
+
 jellyfin_data = None
 if "jellyfin" in excluded:
     try:
@@ -89,11 +91,13 @@ if not spotify_data:
     with open(spotify_data_file, "w") as f:
         json.dump(spotify_data, f)
 
-try:
-    with open("associated.json", "r") as f:
-        associated = json.load(f)
-except:
-    pass
+associated = None
+if "association" in excluded:
+    try:
+        with open("associated.json", "r") as f:
+            associated = json.load(f)
+    except:
+        pass
 
 if not associated:
     associated = associate(spotify_data, jellyfin_data)
