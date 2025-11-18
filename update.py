@@ -40,8 +40,7 @@ parser.add_argument(
 parser.add_argument(
     "-hd", "--history-dir",
     nargs='?',
-    default="history",
-    help="The directory that contains the Spotify json history files (default: history)"
+    help="The directory that contains the Spotify json history files"
 )
 
 args = parser.parse_args()
@@ -84,12 +83,19 @@ if "spotify" in excluded:
 if not spotify_data:
     if history_dir:
         track_ids = spotify.extract_track_ids_from_history(history_dir)
+        spotify_data = spotify.get_spotify_data(track_ids)
     else:
-        track_ids = spotify.get_user_playlist_track_ids()
-    spotify_data = spotify.get_spotify_data(track_ids)
+        spotify_data = spotify.get_user_playlists_tracks()
     with open(spotify_data_file, "w") as f:
         json.dump(spotify_data, f)
 
-associated = associate(spotify_data, jellyfin_data)
-with open("associated.json", "w") as f:
-    json.dump(associated, f)
+try:
+    with open("associated.json", "r") as f:
+        associated = json.load(f)
+except:
+    pass
+
+if not associated:
+    associated = associate(spotify_data, jellyfin_data)
+    with open("associated.json", "w") as f:
+        json.dump(associated, f)

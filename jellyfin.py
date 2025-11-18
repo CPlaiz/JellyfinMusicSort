@@ -103,3 +103,4 @@ class Jellyfin:
         print("Fetching tracks...")
         tracks = self.get_all_tracks(self.token)
         print(f"Found {len(tracks)} tracks.\n")
+        return tracks

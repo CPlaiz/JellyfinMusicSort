@@ -39,6 +39,14 @@ class Spotify:
             track_ids += tracks
         return track_ids
 
+    def get_user_playlists_tracks(self):
+        playlists = self.get_user_playlists()
+        tracks_deduplicated = {}
+        for tracks in playlists.values():
+            for track in tracks:
+                tracks_deduplicated[track["id"]] = track
+        return list(tracks_deduplicated.values())
+
     def get_user_playlists(self):
         next_playlist_page = 0
         page_size = 25
@@ -63,7 +71,7 @@ class Spotify:
                     limit=page_size,
                     offset=next_playlist_tracks_page * page_size
                 )
-                tracks += [item["track"]["name"] for item in playlist_items_response["items"]]
+                tracks += [item["track"]["id"] for item in playlist_items_response["items"]]
                 if not playlist_items_response["next"]:
                     break
                 next_playlist_tracks_page += 1
