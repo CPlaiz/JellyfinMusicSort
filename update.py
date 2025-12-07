@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from associate import associate
 from jellyfin import Jellyfin
-from spotify import Spotify
+from spotify import Spotify, extract_track_ids_from_history, get_history
 
 load_dotenv()
 
@@ -28,7 +28,7 @@ parser.add_argument(
 parser.add_argument(
     "-e", "--excluded",
     default="",
-    help="The excluded update sources (default: '', possible values: spotify,jellyfin)"
+    help="The excluded update sources (default: '', possible values: spotify,jellyfin,association)"
 )
 
 # optional
@@ -83,11 +83,16 @@ if "spotify" in excluded:
         pass
 
 if not spotify_data:
+    spotify_data = spotify.get_user_playlists_tracks()
     if history_dir:
-        track_ids = spotify.extract_track_ids_from_history(history_dir)
-        spotify_data = spotify.get_spotify_data(track_ids)
-    else:
-        spotify_data = spotify.get_user_playlists_tracks()
+        history = get_history(history_dir)
+        history_track_ids = extract_track_ids_from_history(history)
+        print(len(history_track_ids))
+        track_ids = [track["id"] for track in spotify_data]
+        track_ids = [track_id for track_id in track_ids if track_id not in history_track_ids]
+        print(len(track_ids))
+        spotify_data.extend(spotify.get_spotify_data(track_ids))
+
     with open(spotify_data_file, "w") as f:
         json.dump(spotify_data, f)
 

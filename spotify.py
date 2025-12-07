@@ -6,31 +6,15 @@ import json
 
 
 class Spotify:
-    def __init__(self, client_id, client_secret, redirect_uri):
+    def __init__(self, client_id, client_secret, redirect_uri, username=None, password=None):
         self.sp_client = spotipy.Spotify(
             auth_manager=SpotifyOAuth(
                 client_id=client_id,
                 client_secret=client_secret,
                 redirect_uri=redirect_uri,
-                scope="user-library-read"
+                scope="user-library-read playlist-read-private"
             )
         )
-
-    def extract_track_ids_from_history(self, history_dir):
-        items = []
-
-        for file in os.listdir(history_dir):
-            items += json.load(open(history_dir + "/" + file))
-
-        track_ids = []
-
-        for item in items:
-            track_uri = item["spotify_track_uri"]
-            if not track_uri:
-                continue
-            track_id = track_uri.split(":")[2]
-            track_ids.append(track_id)
-        return list(set(track_ids))
 
     def get_user_playlists_tracks(self):
         playlists = self.get_user_playlists()
@@ -66,11 +50,14 @@ class Spotify:
                     break
                 next_playlist_tracks_page += 1
             playlist_tracks[playlist_id] = (playlist_name, tracks)
-        print("Fetched {} playlist tracks".format(len(playlist_tracks)))
+            print(f"Fetched {len(tracks)} tracks for '{playlist_name}'")
+        print("Fetched tracks for {} playlists".format(len(playlists)))
         return playlist_tracks
 
     def get_spotify_data(self, track_ids):
         print(f"Getting data for {len(track_ids)} tracks")
+
+        track_ids = [track_id for track_id in track_ids if track_id is not None]
 
         spotify_data = {"tracks": []}
 
@@ -84,7 +71,8 @@ class Spotify:
             spotify_data["tracks"].extend(new_track_data["tracks"])
             time.sleep(3)
 
-        return spotify_data
+        return spotify_data["tracks"]
+
 
 def get_tracks_from_user_playlists(playlists):
     tracks_deduplicated = {}
@@ -92,3 +80,20 @@ def get_tracks_from_user_playlists(playlists):
         for track in tracks:
             tracks_deduplicated[track["id"]] = track
     return list(tracks_deduplicated.values())
+
+def get_history(history_dir):
+    entries = []
+
+    for file in os.listdir(history_dir):
+        entries += json.load(open(history_dir + "/" + file))
+    return entries
+
+def extract_track_ids_from_history(items):
+    track_ids = []
+    for item in items:
+        track_uri = item["spotify_track_uri"]
+        if not track_uri:
+            continue
+        track_id = track_uri.split(":")[2]
+        track_ids.append(track_id)
+    return list(set(track_ids))
